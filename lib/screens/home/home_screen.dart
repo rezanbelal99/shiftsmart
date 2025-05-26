@@ -9,6 +9,7 @@ import '../../utils/calendar_service.dart'; // Service for fetching calendar shi
 import '../../models/shift.dart'; // Data model for a work shift
 import '../../store/app_state.dart'; // Global app state class
 import '../../store/actions/shift_actions.dart'; // Redux action for storing shifts
+import '../shifts/shift_list_screen.dart'; // Screen to view all shifts
 
 /// Fetches work-related shifts from the calendar and dispatches them to the Redux store.
 /// Then shows a snackbar with the number of found shifts.
@@ -66,6 +67,19 @@ class HomeScreen extends StatelessWidget {
 
                 SizedBox(height: 20),
 
+                // Button to view all shifts
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ShiftListScreen()),
+                    );
+                  },
+                  child: Text('View All Shifts'),
+                ),
+
+                SizedBox(height: 20),
+
                 // Section header for imported shifts
                 Text('Imported Shifts', style: TextStyle(fontWeight: FontWeight.bold)),
 
@@ -81,7 +95,7 @@ class HomeScreen extends StatelessWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: shifts.map((shift) {
-                        final formatter = DateFormat('yyyy-MM-dd HH:mm');
+                        final formatter = DateFormat('dd-MM-yyyy HH:mm');
                         return Container(
                           margin: EdgeInsets.only(bottom: 12),
                           padding: EdgeInsets.all(12),
