@@ -1,28 +1,51 @@
 class Shift {
-  final String id;
-  final String title;
-  final DateTime start;
-  final DateTime end;
+  final String id; // Unique ID for the shift
+  final String title; // Shift title or label
+  final DateTime start; // Start time of the shift
+  final DateTime end; // End time of the shift
+  final double? hourlyRate; // Optional custom hourly pay rate
 
   Shift({
     required this.id,
     required this.title,
     required this.start,
     required this.end,
+    this.hourlyRate,
   });
 
-  Duration get duration => end.difference(start);
+  Duration get duration => end.difference(start); // Total shift duration
 
-  // Optional: get hours as decimal
-  double get hours => duration.inMinutes / 60.0;
+  double get hours => duration.inMinutes / 60.0; // Duration in hours
 
-  // Optional: for easier debugging
+  double get earnings {
+    final rate = hourlyRate ?? 200; // Fallback to 200 if no rate provided
+    return hours * rate;
+  }
+
+  // Create a copy of this shift with optional overrides
+  Shift copyWith({
+    String? id,
+    String? title,
+    DateTime? start,
+    DateTime? end,
+    double? hourlyRate,
+  }) {
+    return Shift(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      start: start ?? this.start,
+      end: end ?? this.end,
+      hourlyRate: hourlyRate ?? this.hourlyRate,
+    );
+  }
+
+  // Helpful for debugging
   @override
   String toString() {
     return 'Shift(title: $title, start: $start, end: $end, hours: ${hours.toStringAsFixed(2)})';
   }
 
-  // Optional: for comparison in Redux
+  // Equality check
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

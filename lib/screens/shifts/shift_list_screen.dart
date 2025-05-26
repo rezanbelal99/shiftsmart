@@ -26,30 +26,96 @@ class ShiftListScreen extends StatelessWidget {
                 return Center(child: Text('No shifts added yet.'));
               }
 
+              // Compute total monthly earnings
+              final now = DateTime.now();
+              final currentMonthShifts = shifts.where((s) =>
+                s.start.year == now.year && s.start.month == now.month);
+              final totalEarnings = currentMonthShifts.fold(0.0, (sum, s) => sum + s.earnings);
+
               return ScrollConfiguration(
                 behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
                 child: ListView.separated(
-                  itemCount: shifts.length,
-                  separatorBuilder: (_, __) => SizedBox(height: 12),
+                  itemCount: shifts.length + 1,
+                  separatorBuilder: (context, index) =>
+                      index == 0 ? SizedBox.shrink() : SizedBox(height: 12),
                   itemBuilder: (context, index) {
-                    final shift = shifts[index];
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[900],
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            shift.title,
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    if (index == 0) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          'Total this month: ${totalEarnings.toStringAsFixed(2)} kr',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          SizedBox(height: 4),
-                          Text('${DateFormat('dd-MM-yyyy HH:mm').format(shift.start)} → ${DateFormat('dd-MM-yyyy HH:mm').format(shift.end)}'),
-                          Text('Duration: ${shift.hours.toStringAsFixed(1)} h'),
-                        ],
+                        ),
+                      );
+                    }
+                    final shift = shifts[index - 1];
+                    return SizedBox(
+                      width: double.infinity,
+                      child: Dismissible(
+                        key: ValueKey(shift.id),
+                        background: Container(
+                          color: Colors.red,
+                          alignment: Alignment.centerLeft,
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Icon(Icons.delete, color: Colors.white),
+                        ),
+                        secondaryBackground: Container(
+                          color: Colors.blue,
+                          alignment: Alignment.centerRight,
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: Icon(Icons.edit, color: Colors.white),
+                        ),
+                        confirmDismiss: (direction) async {
+                          if (direction == DismissDirection.startToEnd) {
+                            // Delete
+                            final store = StoreProvider.of<AppState>(context);
+                            final updatedShifts = List<Shift>.from(store.state.shifts)..remove(shift);
+                            store.dispatch(SetShiftsAction(updatedShifts));
+                            return true;
+                          } else if (direction == DismissDirection.endToStart) {
+                            // Edit
+                            final editedShift = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ManualShiftEntryScreen(existingShift: shift),
+                              ),
+                            );
+                            if (editedShift != null && editedShift is Shift) {
+                              final store = StoreProvider.of<AppState>(context);
+                              final updatedShifts = List<Shift>.from(store.state.shifts)
+                                ..removeWhere((s) => s.id == shift.id)
+                                ..add(editedShift);
+                              store.dispatch(SetShiftsAction(updatedShifts));
+                            }
+                            return false;
+                          }
+                          return false;
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[900],
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                shift.title,
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 4),
+                              Text('${DateFormat('dd-MM-yyyy HH:mm').format(shift.start)} → ${DateFormat('dd-MM-yyyy HH:mm').format(shift.end)}'),
+                              Text('Duration: ${shift.hours.toStringAsFixed(1)} h'),
+                              Text('Earnings: ${shift.earnings.toStringAsFixed(2)} kr'),
+                            ],
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -79,6 +145,10 @@ class ShiftListScreen extends StatelessWidget {
 }
 
 class ManualShiftEntryScreen extends StatefulWidget {
+  final Shift? existingShift;
+
+  ManualShiftEntryScreen({this.existingShift});
+
   @override
   _ManualShiftEntryScreenState createState() => _ManualShiftEntryScreenState();
 }
@@ -88,6 +158,18 @@ class _ManualShiftEntryScreenState extends State<ManualShiftEntryScreen> {
   final _titleController = TextEditingController();
   DateTime? _startTime;
   DateTime? _endTime;
+  double? _hourlyRate;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingShift != null) {
+      _titleController.text = widget.existingShift!.title;
+      _startTime = widget.existingShift!.start;
+      _endTime = widget.existingShift!.end;
+      _hourlyRate = widget.existingShift!.hourlyRate;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +195,7 @@ class _ManualShiftEntryScreenState extends State<ManualShiftEntryScreen> {
               ListTile(
                 title: Text(_startTime == null
                     ? 'Select Start Time'
-                    : 'Start: ${DateFormat('yyyy-MM-dd HH:mm').format(_startTime!)}'),
+                    : 'Start: ${DateFormat('dd-MM-yyyy HH:mm').format(_startTime!)}'),
                 trailing: Icon(Icons.access_time),
                 onTap: () async {
                   final picked = await showDateTimePicker(context);
@@ -130,7 +212,18 @@ class _ManualShiftEntryScreenState extends State<ManualShiftEntryScreen> {
                   if (picked != null) setState(() => _endTime = picked);
                 },
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 16),
+              TextFormField(
+                decoration: InputDecoration(labelText: 'Hourly Rate (kr)'),
+                keyboardType: TextInputType.number,
+                initialValue: _hourlyRate != null ? _hourlyRate.toString() : null,
+                onChanged: (value) {
+                  setState(() {
+                    _hourlyRate = double.tryParse(value);
+                  });
+                },
+              ),
+              SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate() &&
@@ -138,10 +231,11 @@ class _ManualShiftEntryScreenState extends State<ManualShiftEntryScreen> {
                       _endTime != null &&
                       _startTime!.isBefore(_endTime!)) {
                     final shift = Shift(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
+                      id: widget.existingShift?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
                       title: _titleController.text,
                       start: _startTime!,
                       end: _endTime!,
+                      hourlyRate: _hourlyRate,
                     );
                     Navigator.pop(context, shift);
                   }

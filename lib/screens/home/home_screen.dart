@@ -91,39 +91,56 @@ class HomeScreen extends StatelessWidget {
                       return Text('No shifts imported yet.');
                     }
 
-                    // Render each shift inside a styled container
+                    final now = DateTime.now();
+                    final currentMonthShifts = shifts.where((s) =>
+                      s.start.year == now.year && s.start.month == now.month);
+                    final totalEarnings = currentMonthShifts.fold(0.0, (sum, s) => sum + s.earnings);
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: shifts.map((shift) {
-                        final formatter = DateFormat('dd-MM-yyyy HH:mm');
-                        return Container(
-                          margin: EdgeInsets.only(bottom: 12),
-                          padding: EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.grey[900],
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: Text(
+                            'Total this month: ${totalEarnings.toStringAsFixed(2)} kr',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                shift.title,
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '${formatter.format(shift.start)} → ${formatter.format(shift.end)}',
-                                style: TextStyle(color: Colors.grey[400]),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Duration: ${shift.hours.toStringAsFixed(1)} h',
-                                style: TextStyle(color: Colors.grey[300]),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                        ),
+                        ...shifts.map((shift) {
+                          final formatter = DateFormat('dd-MM-yyyy HH:mm');
+                          return Container(
+                            margin: EdgeInsets.only(bottom: 12),
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.grey[900],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  shift.title,
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  '${formatter.format(shift.start)} → ${formatter.format(shift.end)}',
+                                  style: TextStyle(color: Colors.grey[400]),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Duration: ${shift.hours.toStringAsFixed(1)} h',
+                                  style: TextStyle(color: Colors.grey[300]),
+                                ),
+                                Text(
+                                  'Earnings: ${shift.earnings.toStringAsFixed(2)} kr',
+                                  style: TextStyle(color: Colors.grey[300]),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                     );
                   },
                 ),
