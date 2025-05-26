@@ -79,6 +79,7 @@ flutter:
   assets:
     - assets/icon/app_icon.png
     - assets/splash/start_screen.png
+    - assets/icon/scan_icon.png
 
 
 flutter_icons:
