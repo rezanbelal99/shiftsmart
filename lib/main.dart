@@ -5,6 +5,7 @@ import 'package:redux/redux.dart';
 import 'store/reducers/app_reducer.dart';
 import 'store/app_state.dart';
 import 'screens/home/home_screen.dart';
+import 'package:shiftsmart/screens/payslips/payslip_import_screen.dart';
 
 void main() {
   final store = Store<AppState>(
@@ -33,6 +34,9 @@ class ShiftSmartApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         home: HomeScreen(),
+        routes: {
+          '/scanPayslip': (context) => PayslipImportScreen(),
+        },
       ),
     );
   }
