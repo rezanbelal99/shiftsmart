@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:path/path.dart';
 import 'package:shiftsmart/models/payslip.dart';
 import 'package:shiftsmart/store/actions/payslip_actions.dart';
 import 'package:shiftsmart/store/app_state.dart';
@@ -33,52 +35,35 @@ class _PayslipImportScreenState extends State<PayslipImportScreen> {
   }
 
   Future<void> _performOCR(File imageFile) async {
-    try {
-      final inputImage = InputImage.fromFile(imageFile);
-      final textRecognizer = TextRecognizer();
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
-      await textRecognizer.close();
+    final uri = Uri.parse("http://192.168.10.118:5000/scan_payslip"); // Replace with your Mac's IP if testing on device
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path, filename: basename(imageFile.path)));
 
-      setState(() {
-        _recognizedText = recognizedText.text;
-        _parsedFields = _parsePayslipData(recognizedText.text);
-      });
+    try {
+      final response = await request.send();
+      if (response.statusCode == 200) {
+        final body = await response.stream.bytesToString();
+        final data = json.decode(body);
+
+        setState(() {
+          _recognizedText = null;
+          _parsedFields = Map<String, String>.from(data['fields']);
+        });
+      } else {
+        final errorBody = await response.stream.bytesToString();
+        setState(() {
+          _recognizedText = "Server error: ${response.statusCode} - $errorBody";
+          _parsedFields = {};
+        });
+      }
     } catch (e) {
       setState(() {
-        _recognizedText = 'Failed to recognize text: $e';
+        _recognizedText = "Error connecting to server: $e";
+        _parsedFields = {};
       });
     }
   }
 
-  Map<String, String> _parsePayslipData(String text) {
-    final Map<String, String> data = {};
-    final lines = text.split('\n').map((l) => l.trim()).toList();
-
-    final fields = {
-      'Employer': RegExp(r'employer', caseSensitive: false),
-      'Period': RegExp(r'pay period|period', caseSensitive: false),
-      'Hours Worked': RegExp(r'hours worked', caseSensitive: false),
-      'Gross Pay': RegExp(r'gross pay', caseSensitive: false),
-      'Net Pay': RegExp(r'net pay', caseSensitive: false),
-      'Payment Date': RegExp(r'payment date', caseSensitive: false),
-    };
-
-    for (var line in lines) {
-      for (var entry in fields.entries) {
-        if (entry.value.hasMatch(line) && !data.containsKey(entry.key)) {
-          final extracted = _extractTextAfterLabel(line);
-          final normalizedExtracted = extracted.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-          final normalizedKey = entry.key.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-
-          // Only save if extracted text is meaningfully different from label
-          if (!normalizedExtracted.contains(normalizedKey)) {
-            data[entry.key] = extracted;
-          }
-        }
-      }
-    }
-    return data;
-  }
   String _extractTextAfterColon(String line) {
     if (line.contains(':')) {
       return line.split(':').last.trim();
@@ -140,93 +125,60 @@ class _PayslipImportScreenState extends State<PayslipImportScreen> {
               const SizedBox(height: 20),
             ],
             Expanded(
-              child: Column(
-                children: [
-                  if (_parsedFields.isNotEmpty)
-                    Expanded(
-                      child: ListView(
-                        children: _parsedFields.keys.map((key) {
-                          return GestureDetector(
-                            onDoubleTap: () {
-                              final controller = TextEditingController(text: _parsedFields[key]);
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: Text("Edit $key"),
-                                  content: TextField(
-                                    controller: controller,
-                                    autofocus: true,
+              child: _parsedFields.isNotEmpty
+                  ? Column(
+                      children: [
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: _parsedFields.length,
+                            itemBuilder: (context, index) {
+                              final key = _parsedFields.keys.elementAt(index);
+                              final value = _parsedFields[key] ?? '';
+                              return ListTile(
+                                title: Text(
+                                  "$key:",
+                                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: TextFormField(
+                                  initialValue: value,
+                                  style: TextStyle(color: Colors.white),
+                                  onChanged: (val) {
+                                    _parsedFields[key] = val;
+                                  },
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter $key',
+                                    hintStyle: TextStyle(color: Colors.grey),
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                      },
-                                      child: Text("Cancel"),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          _parsedFields[key] = controller.text;
-                                        });
-                                        Navigator.of(context).pop();
-                                      },
-                                      child: Text("Save"),
-                                    ),
-                                  ],
                                 ),
                               );
                             },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
-                              child: Row(
-                                children: [
-                                  Text(
-                                    "$key: ",
-                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      _parsedFields[key] ?? '',
-                                      style: const TextStyle(color: Colors.white),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  if (_parsedFields.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          final payslip = {
-                            'employer': _parsedFields['Employer'] ?? '',
-                            'period': _parsedFields['Period'] ?? '',
-                            'hoursWorked': double.tryParse((_parsedFields['Hours Worked'] ?? '0').replaceAll(',', '.')) ?? 0,
-                            'grossPay': double.tryParse((_parsedFields['Gross Pay'] ?? '0').replaceAll(RegExp(r'[^0-9.]'), '').replaceAll(',', '.')) ?? 0,
-                            'netPay': double.tryParse((_parsedFields['Net Pay'] ?? '0').replaceAll(RegExp(r'[^0-9.]'), '').replaceAll(',', '.')) ?? 0,
-                            'paymentDate': _parsedFields['Payment Date'] ?? '',
-                          };
-                          // TODO: Save logic
-                        },
-                        icon: const Icon(Icons.save),
-                        label: const Text('Save Payslip'),
-                      ),
-                    ),
-                  if (_parsedFields.isEmpty)
-                    Center(
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            final payslip = {
+                              'employer': _parsedFields['Employer'] ?? '',
+                              'period': _parsedFields['Period'] ?? '',
+                              'hoursWorked': double.tryParse((_parsedFields['Hours Worked'] ?? '0').replaceAll(',', '.')) ?? 0,
+                              'grossPay': double.tryParse((_parsedFields['Gross Pay'] ?? '0').replaceAll(RegExp(r'[^0-9.]'), '').replaceAll(',', '.')) ?? 0,
+                              'netPay': double.tryParse((_parsedFields['Net Pay'] ?? '0').replaceAll(RegExp(r'[^0-9.]'), '').replaceAll(',', '.')) ?? 0,
+                              'paymentDate': _parsedFields['Payment Date'] ?? '',
+                            };
+                            // TODO: Save to store
+                            Navigator.pop(context, payslip);
+                          },
+                          icon: Icon(Icons.save),
+                          label: Text('Save Payslip'),
+                        ),
+                      ],
+                    )
+                  : Center(
                       child: Text(
                         _recognizedText ?? 'No text recognized yet.',
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
-                ],
-              ),
-            )
+            ),
           ],
         ),
       ),

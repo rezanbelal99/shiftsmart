@@ -116,7 +116,7 @@ class HomeScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => PayslipReviewScreen(payslipData: result),
+                                builder: (_) => PayslipReviewScreen(payslipData: Map<String, String>.from(result)),
                               ),
                             );
                           }
