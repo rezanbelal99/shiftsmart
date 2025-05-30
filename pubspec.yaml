@@ -38,10 +38,15 @@ dependencies:
   file_picker: ^6.1.1
   http: ^0.13.6
   path_provider: ^2.1.2
-  intl: ^0.17.0
-  charts_flutter: ^0.12.0
+  intl: ^0.19.0    # Dart internationalization package, matches flutter_localizations pin
   google_mlkit_text_recognition: ^0.15.0
   image_picker: ^1.0.7
+  firebase_core: ^3.13.1    # Core Firebase SDK
+  firebase_auth: ^5.5.4     # Firebase Authentication
+  cloud_firestore: ^5.6.8   # Cloud Firestore database
+  firebase_storage: ^12.4.6 # Firebase Cloud Storage
+  flutter_localizations:
+    sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

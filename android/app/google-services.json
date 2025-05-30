@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "241634317459",
+    "project_id": "shiftsmart-39f39",
+    "storage_bucket": "shiftsmart-39f39.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:241634317459:android:c79260dab3bd0348a26966",
+        "android_client_info": {
+          "package_name": "com.example.shiftsmart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAp6iXDDYsTao2X1X0pnXDUizcf9XvZk2w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

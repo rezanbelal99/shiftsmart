@@ -30,7 +30,7 @@ class _PayslipReviewScreenState extends State<PayslipReviewScreen> {
   @override
   void initState() {
     super.initState();
-    _controllers = {};
+    _controllers = {};  
 
     final keyMapping = {
       'employer': 'employer',
